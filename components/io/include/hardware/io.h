@@ -2,8 +2,9 @@
 #define IO_H
 
 #include <stdint.h>
+#include "driver/mcp23s17.h"
 
-void io_init();
+void io_init(struct mcp23s17_mutex_interface interface);
 
 void toggle_led_top();
 void toggle_led_bottom();

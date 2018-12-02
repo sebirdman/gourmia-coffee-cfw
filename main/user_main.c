@@ -1,9 +1,9 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <freertos/semphr.h>
 
-#include "hardware/display.h"
-#include "hardware/io.h"
-
+#include "hardware_monitor.h"
+#include "hardware/wifi.h"
 
 /******************************************************************************
  * FunctionName : app_main
@@ -13,8 +13,9 @@
 *******************************************************************************/
 void app_main(void)
 {
-    display_init();
-    io_init();
+    hardware_monitor_init();
+
+    wifi_init();
 
     while (1)
     {

@@ -4,6 +4,12 @@
 
 #include <stdint.h>
 
+struct ht1621_mutex_interface
+{
+    void (*take)();
+    void (*release)();
+};
+
 enum Commands
 {
     SYS_DIS = 0x00,   /*!< System disable. It stops the bias generator and the system oscillator. */
@@ -57,16 +63,14 @@ enum Commands
     WRITE_MODE = 0xa0,             /*!< This instructs the HT1621 to prepare for writing the internal RAM. */
     READ_MODIFY_WRITE_MODE = 0xa0, /*!< This instructs the HT1621 to prepare for reading/modifying batch of internal RAM adresses. */
     SPECIAL_MODE = 0x90            /*!< This instructs the HT1621 to prepare for executing a special command. */
-
 };
 
 #define HT1623_DATA_PIN GPIO_NUM_13
 #define HT1623_WR_PIN GPIO_NUM_14
 #define HT1623_CS_PIN GPIO_NUM_4
 
-void HT1621_init();
+void HT1621_init(struct ht1621_mutex_interface interface);
 void HT1621_clear();
-void HT1621_writeBits(uint8_t data, uint8_t cnt);
 void HT1621_write(uint8_t address, uint8_t data);
 
 #endif /* HT1623_H */

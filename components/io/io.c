@@ -6,6 +6,8 @@
 #define IO_TAG "IO"
 #define IO_TASK_SIZE 1024
 
+struct mcp23s17_mutex_interface _prv_interface;
+
 typedef enum
 {
     LED_TOP = 0,
@@ -48,7 +50,7 @@ void toggle_led_bottom()
 
 void toggle_led_screen()
 {
-    _porta = _porta ^ (1UL << LED_BOTTOM);
+    _porta = _porta ^ (1UL << LED_SCREEN);
     _setGPIO = 1;
 }
 
@@ -74,6 +76,14 @@ void clear_all_outputs()
 {
     _porta = 0b00000000;
     _setGPIO = 1;
+}
+
+void make_coffee(long seconds) {
+
+}
+
+void warm_hotplate(long seconds) {
+
 }
 
 uint8_t check_button_one()
@@ -103,17 +113,16 @@ uint8_t check_button_bottom()
 
 static void prv_io_task()
 {
-    mcp23s17_init();
+    mcp23s17_init(_prv_interface);
     mcp23s17_REG_SET(IODIR_CTRL, PORTB, 0b11000111); // Top 3 bits and bottom 2 bits are inputs
     mcp23s17_REG_SET(IODIR_CTRL, PORTA, 0b10001000); //
     mcp23s17_REG_SET(GPPU_CTRL, PORTA, 0b01110111);  // Enable Output pull ups
 
     sGPIO_SET(PORTB, _portb); // All outputs OFF
     sGPIO_SET(PORTA, _porta); // All outputs OFF
-
     while (1)
     {
-        toggle_led_top();
+        //toggle_led_top();
 
         _portb = sGPIO_READ(PORTB);
         if (check_button_one())
@@ -134,7 +143,7 @@ static void prv_io_task()
         }
         if (check_button_bottom())
         {
-            printf("Button top pressed\n");
+            printf("Button bottom pressed\n");
         }
 
         if (_setGPIO)
@@ -145,7 +154,9 @@ static void prv_io_task()
     }
 }
 
-void io_init()
+// TODO: is the INTA and INTB pins just not wired up? kinda sucks.
+void io_init(struct mcp23s17_mutex_interface interface)
 {
+    _prv_interface = interface;
     xTaskCreate(&prv_io_task, IO_TAG, IO_TASK_SIZE, NULL, 7, NULL);
 }

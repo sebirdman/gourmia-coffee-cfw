@@ -1,14 +1,25 @@
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 
 #include "driver/gpio.h"
-#include "driver/ht1623.h"
+#include "driver/ht1621.h"
 
-#define TAKE_CS() gpio_set_level(HT1623_CS_PIN, 0)
-#define RELEASE_CS() gpio_set_level(HT1623_CS_PIN, 1)
+#define prv_take_cs() gpio_set_level(HT1623_CS_PIN, 0)
+#define prv_release_cs() gpio_set_level(HT1623_CS_PIN, 1)
 
-void HT1621_writeBits(uint8_t data, uint8_t cnt)
+struct ht1621_mutex_interface _prv_interface;
+
+static void prepare_gpio() {
+    gpio_config_t io_conf;
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    io_conf.pin_bit_mask = ((1ULL << HT1623_DATA_PIN) | (1ULL << HT1623_WR_PIN) | (1ULL << HT1623_CS_PIN));
+    gpio_config(&io_conf);
+}
+
+static void prv_ht1621_write_bits(uint8_t data, uint8_t cnt)
 {
     uint8_t i;
-
     for (i = 0; i < cnt; i++, data <<= 1)
     {
         gpio_set_level(HT1623_WR_PIN, 0);
@@ -17,48 +28,58 @@ void HT1621_writeBits(uint8_t data, uint8_t cnt)
     }
 }
 
+static void prv_ht1621_send_command(uint8_t cmd)
+{
+    _prv_interface.take();
+
+    prv_take_cs();
+    prv_ht1621_write_bits(COMMAND_MODE, 4);
+    prv_ht1621_write_bits(cmd, 8);
+    prv_release_cs();
+
+    _prv_interface.release();
+}
+
+
 void HT1621_write(uint8_t address, uint8_t data)
 {
-    TAKE_CS();
-    HT1621_writeBits(WRITE_MODE, 3);
-    HT1621_writeBits(address << 2, 6); // 6 is because max address is 128
-    HT1621_writeBits(data << 4, 4);    // 6 is because max address is 128
-    RELEASE_CS();
+    if (address > 7)
+    {
+        return;
+    }
+
+    _prv_interface.take();
+    prepare_gpio();
+    prv_take_cs();
+
+    prv_ht1621_write_bits(WRITE_MODE, 3);
+    prv_ht1621_write_bits(address << 2, 6); // 6 is because max address is 128
+    prv_ht1621_write_bits(data << 4, 4);    // 6 is because max address is 128
+
+    prv_release_cs();
+    _prv_interface.release();
 }
 
-void HT1621_sendCommand(uint8_t cmd)
+void HT1621_init(struct ht1621_mutex_interface interface)
 {
-    TAKE_CS();
-    HT1621_writeBits(COMMAND_MODE, 4);
-    HT1621_writeBits(cmd, 8);
-    RELEASE_CS();
-}
+    _prv_interface = interface;
+    prepare_gpio();
+    prv_release_cs();
 
-void HT1621_init()
-{
-    gpio_config_t io_conf;
-    io_conf.mode = GPIO_MODE_OUTPUT;
-    io_conf.pin_bit_mask = ((1ULL << HT1623_DATA_PIN) | (1ULL << HT1623_WR_PIN) | (1ULL << HT1623_CS_PIN));
-    gpio_config(&io_conf);
+    prv_ht1621_send_command(BIAS_THIRD_4_COM);
+    prv_ht1621_send_command(RC256K);
 
-    gpio_set_level(HT1623_CS_PIN, 1);
-    gpio_set_level(HT1623_WR_PIN, 1);
-    gpio_set_level(HT1623_DATA_PIN, 1);
+    prv_ht1621_send_command(SYS_DIS);
+    prv_ht1621_send_command(WDT_DIS);
 
-    HT1621_sendCommand(BIAS_THIRD_4_COM);
-    HT1621_sendCommand(RC256K);
-
-    HT1621_sendCommand(SYS_DIS);
-    HT1621_sendCommand(WDT_DIS);
-
-    HT1621_sendCommand(SYS_EN);
-    HT1621_sendCommand(LCD_ON);
+    prv_ht1621_send_command(SYS_EN);
+    prv_ht1621_send_command(LCD_ON);
 }
 
 void HT1621_clear()
 {
     uint8_t i;
-    for (i = 0; i < 32; i++)
+    for (i = 0; i < 8; i++)
     {
         HT1621_write(i, 0x00);
     }
