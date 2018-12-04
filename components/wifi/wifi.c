@@ -15,8 +15,11 @@
 #include "esp_wifi_types.h"
 
 #include "hardware/wifi.h"
+#include "hardware_monitor.h"
 
 #define EXAMPLE_ESP_WIFI_MODE_AP CONFIG_ESP_WIFI_MODE_AP //TRUE:AP FALSE:STA
+#define EXAMPLE_ESP_WIFI_SSID "Drop it like its Hotspot"
+#define EXAMPLE_ESP_WIFI_PASS "mightycheese250"
 #define EXAMPLE_MAX_STA_CONN CONFIG_MAX_STA_CONN
 
 /* FreeRTOS event group to signal when we are connected*/
@@ -116,7 +119,7 @@ static void promisc(void *recv_buf, wifi_promiscuous_pkt_type_t type)
 
     const wifi_ieee80211_mac_hdr_t *hdr = &pk->hdr;
 
-    if ((hdr->addr2[4] == 0x17) && (hdr->addr2[5] == 0x64))
+    if ((hdr->addr2[4] == 0xD3) && (hdr->addr2[5] == 0xC0))
     {
 
         printf("PACKET CHAN=%02d, RSSI=%02d "
@@ -145,6 +148,16 @@ static void promisc(void *recv_buf, wifi_promiscuous_pkt_type_t type)
             (ppkt->payload) + sizeof(packet_header),
             data_len);
 
+        if (raw_packet[0] == 0xFF)
+        {
+
+            if (raw_packet[1] == 0x01)
+            {
+                // COFFEE GO!
+                hardware_start_coffee();
+            }
+        }
+
         for (int i = 0; i < data_len; i++)
         {
             printf("%02X", raw_packet[i]);
@@ -159,6 +172,7 @@ static void setup_wifi_promisc()
 {
     esp_wifi_set_promiscuous_rx_cb(&promisc);
     esp_wifi_set_promiscuous(true);
+    esp_wifi_set_channel(6, 1);
 }
 
 static esp_err_t prv_wifi_event_handler(void *ctx, system_event_t *event)
@@ -218,16 +232,5 @@ void wifi_init()
 
     setup_wifi_promisc();
 
-    wifi_config_t wifi_config = {
-        .sta = {
-            .ssid = EXAMPLE_ESP_WIFI_SSID,
-            .password = EXAMPLE_ESP_WIFI_PASS},
-    };
-    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
-
-    esp_wifi_connect();
-
     ESP_LOGE(TAG, "wifi_init_sta finished.");
-    ESP_LOGE(TAG, "connect to ap SSID:%s password:%s",
-             EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
 }

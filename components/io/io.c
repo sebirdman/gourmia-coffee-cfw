@@ -122,8 +122,6 @@ static void prv_io_task()
     sGPIO_SET(PORTA, _porta); // All outputs OFF
     while (1)
     {
-        //toggle_led_top();
-
         _portb = sGPIO_READ(PORTB);
         if (check_button_one())
         {

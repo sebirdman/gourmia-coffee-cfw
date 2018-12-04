@@ -7,5 +7,6 @@
 SemaphoreHandle_t g_hardware_semaphore;
 
 void hardware_monitor_init();
+void hardware_start_coffee();
 
 #endif /* HARDWARE_MONITOR_H */
